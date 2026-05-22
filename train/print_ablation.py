@@ -7,7 +7,7 @@ Run after all training conditions are complete.
 import pandas as pd
 import os
 
-RESULTS_BASE = "/content/drive/MyDrive"
+RESULTS_BASE = "/content/drive/MyDrive/Retinal_SSL"
 
 runs = [
     ("No SSL (ImageNet baseline)",          "results_nossl"),
