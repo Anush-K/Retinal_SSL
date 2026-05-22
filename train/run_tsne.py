@@ -1,3 +1,7 @@
+"""
+run_tsne.py — t-SNE visualization of SSL representations for APTOS
+"""
+
 import torch
 import pandas as pd
 import numpy as np
@@ -11,32 +15,33 @@ import os
 
 from ssl_simclr.ssl_model import SSLModel
 
-device = "cuda"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
-# -------- Load Trained SSL Model --------
+# ── Load SSL model ─────────────────────────────────────────────
 model = SSLModel().to(device)
-model.load_state_dict(torch.load("ssl_final.pth", map_location=device))
+model.load_state_dict(
+    torch.load("ssl_final.pth", map_location=device), strict=False
+)
 model.eval()
 
-# -------- Load Metadata --------
-df = pd.concat([
-    pd.read_csv("/content/drive/MyDrive/APTOS_metadata.csv")
-])
+# ── Load metadata ──────────────────────────────────────────────
+df = pd.read_csv("/content/drive/MyDrive/Retinal_SSL/APTOS_metadata.csv")
 
-# Remove test split
+# Exclude test split — visualize train+val representations only
 df = df[~df["image_path"].str.contains("/test/")].reset_index(drop=True)
 
-# Balanced sample — 500 per category
+# Balanced sample — up to 500 per class
 dfs = []
-for ds in ["FFPP", "CelebDF"]:
-    for lbl in [0, 1]:
-        subset = df[(df["dataset"] == ds) & (df["label"] == lbl)]
-        dfs.append(subset.sample(n=min(500, len(subset)), random_state=42))
+for lbl in [0, 1]:
+    subset = df[df["label"] == lbl]
+    dfs.append(subset.sample(n=min(500, len(subset)), random_state=42))
 
 df_tsne = pd.concat(dfs).reset_index(drop=True)
-print("t-SNE samples:", len(df_tsne))
+print(f"t-SNE samples: {len(df_tsne)} "
+      f"({(df_tsne.label==0).sum()} NORMAL, "
+      f"{(df_tsne.label==1).sum()} ABNORMAL)")
 
-# -------- Transform --------
+# ── Transform ──────────────────────────────────────────────────
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -48,7 +53,7 @@ transform = transforms.Compose([
 
 class EvalDataset(Dataset):
     def __init__(self, df, transform):
-        self.df = df
+        self.df        = df
         self.transform = transform
 
     def __len__(self):
@@ -57,30 +62,28 @@ class EvalDataset(Dataset):
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
         img = Image.open(row["image_path"]).convert("RGB")
-        return self.transform(img), row["label"], row["dataset"]
+        return self.transform(img), row["label"]
 
 eval_dataset = EvalDataset(df_tsne, transform)
 eval_loader  = DataLoader(eval_dataset, batch_size=128,
                           num_workers=4, pin_memory=True)
 
-features, labels, datasets = [], [], []
+# ── Extract features ───────────────────────────────────────────
+features, labels = [], []
 
-for imgs, lbls, dsets in tqdm(eval_loader):
+for imgs, lbls in tqdm(eval_loader, desc="Extracting features"):
     imgs = imgs.to(device)
     with torch.no_grad():
         feat_map = model.backbone.forward_features(imgs)
         pooled   = model.pool(feat_map).flatten(1)
     features.append(pooled.cpu().numpy())
     labels.append(lbls.numpy())
-    datasets.extend(dsets)
 
 features = np.concatenate(features)
 labels   = np.concatenate(labels)
-datasets = np.array(datasets)
+print(f"Feature shape: {features.shape}")
 
-print("Feature shape:", features.shape)
-
-# -------- Run t-SNE --------
+# ── Run t-SNE ──────────────────────────────────────────────────
 tsne = TSNE(
     n_components=2,
     perplexity=30,
@@ -88,33 +91,36 @@ tsne = TSNE(
     n_iter=1000,
     random_state=42
 )
-
 features_2d = tsne.fit_transform(features)
 print("t-SNE completed.")
 
-plt.figure(figsize=(14, 6))
+# ── Plot ───────────────────────────────────────────────────────
+fig, ax = plt.subplots(figsize=(8, 7))
 
-# -------- Plot 1: Real vs Fake --------
-plt.subplot(1, 2, 1)
-plt.scatter(features_2d[labels==0, 0], features_2d[labels==0, 1],
-            alpha=0.5, s=10, label="Real")
-plt.scatter(features_2d[labels==1, 0], features_2d[labels==1, 1],
-            alpha=0.5, s=10, label="Fake")
-plt.title("t-SNE: Real vs Fake")
-plt.legend()
+colors = {0: "#2196F3", 1: "#F44336"}
+names  = {0: "NORMAL", 1: "ABNORMAL"}
 
-# -------- Plot 2: Dataset Coloring --------
-plt.subplot(1, 2, 2)
-plt.scatter(features_2d[datasets=="FFPP", 0], features_2d[datasets=="FFPP", 1],
-            alpha=0.5, s=10, label="FFPP")
-plt.scatter(features_2d[datasets=="CelebDF", 0], features_2d[datasets=="CelebDF", 1],
-            alpha=0.5, s=10, label="CelebDF")
-plt.title("t-SNE: Dataset Coloring")
-plt.legend()
+for lbl in [0, 1]:
+    mask = labels == lbl
+    ax.scatter(
+        features_2d[mask, 0],
+        features_2d[mask, 1],
+        c=colors[lbl],
+        label=names[lbl],
+        alpha=0.6,
+        s=15,
+        edgecolors="none"
+    )
 
+ax.set_title("t-SNE: SSL Representations — APTOS\n(NORMAL vs ABNORMAL)",
+             fontsize=14)
+ax.legend(fontsize=12)
+ax.set_xlabel("t-SNE dim 1")
+ax.set_ylabel("t-SNE dim 2")
 plt.tight_layout()
 
-os.makedirs("results", exist_ok=True)
-plt.savefig("results/tsne_ssl_df.png", dpi=150)
-
-print("Saved to results/tsne_ssl_df.png")
+os.makedirs("/content/drive/MyDrive/Retinal_SSL/results_ssl_dbfc", exist_ok=True)
+save_path = "/content/drive/MyDrive/Retinal_SSL/results_ssl_dbfc/tsne_ssl_aptos.png"
+plt.savefig(save_path, dpi=150)
+plt.show()
+print(f"Saved: {save_path}")

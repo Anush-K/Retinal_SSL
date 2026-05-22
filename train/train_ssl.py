@@ -110,7 +110,7 @@ def train_ssl(
     scaler = torch.cuda.amp.GradScaler()
 
     # ── Checkpoint Setup ──────────────────────────────────────
-    checkpoint_dir = "checkpoints"
+    checkpoint_dir = "/content/drive/MyDrive/Retinal_SSL/checkpoints"
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     start_epoch = 0
@@ -233,14 +233,14 @@ def train_ssl(
             }, ckpt_path)
             print(f"  Checkpoint saved: {ckpt_path}")
 
-    torch.save(model.state_dict(), "ssl_final.pth")
-    print(f"SSL pretraining complete. Model saved: ssl_final.pth")
+    torch.save(model.state_dict(), "/content/drive/MyDrive/Retinal_SSL/checkpoints/ssl_final.pth")
+    print(f"SSL pretraining complete. Saved: /content/drive/MyDrive/Retinal_SSL/checkpoints/ssl_final.pth")
     print(f"Training finished: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 
 if __name__ == "__main__":
 
-    CSV_FILES = ["/content/drive/MyDrive/APTOS_metadata.csv"]
+    CSV_FILES = ["/content/drive/MyDrive/Retinal_SSL/APTOS_metadata.csv"]
 
     train_ssl(
         csv_files  = CSV_FILES,

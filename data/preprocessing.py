@@ -30,12 +30,19 @@ def sample_frames(video_path, num_frames=8):
 
 
 def process_dataset(dataset_name, raw_path, processed_path, debug=False):
-    face_extractor = FaceExtractor(target_size=224)
+    face_extractor = None
+    if dataset_name != "APTOS":
+        from data.face_extract import FaceExtractor
+        face_extractor = FaceExtractor(target_size=224)
+    
     splits = get_splits(dataset_name, raw_path)
 
-    metadata_writer = MetadataWriter(
-        save_path=os.path.join(processed_path, f"{dataset_name}_metadata.csv")
-    )
+    if dataset_name == "APTOS":
+        csv_save_path = "/content/drive/MyDrive/Retinal_SSL/APTOS_metadata.csv"
+    else:
+        csv_save_path = os.path.join(processed_path, f"{dataset_name}_metadata.csv")
+
+    metadata_writer = MetadataWriter(save_path=csv_save_path)
 
     total_saved = 0
     total_skipped = 0
@@ -108,19 +115,22 @@ if __name__ == "__main__":
                         choices=["FFPP", "CelebDF", "DFD", "APTOS"],
                         help="Which dataset to process")
     parser.add_argument("--debug", action="store_true",
-                        help="Process only 3 videos per split for quick testing")
+                        help="Process only 3 items per split for quick testing")
     args = parser.parse_args()
 
-    RAW_BASE       = "/content/drive/MyDrive/DF_Datasets"
-    PROCESSED_BASE = "/content/drive/MyDrive/DF_Datasets/processed"
-
-    # Map dataset name to folder name on Drive
-    folder_map = {
-        "FFPP":    "FFPP_raw",
-        "CelebDF": "CelebDF_raw",
-        "DFD":     "DFD_raw",
-        "APTOS":   "APTOS_processed",  # Already processed by prepare_dataset.py
-    }
+    # ── Path configuration ────────────────────────────────────
+    if args.dataset == "APTOS":
+        RAW_BASE       = "/content/drive/MyDrive"
+        PROCESSED_BASE = "/content/drive/MyDrive"
+        folder_map     = {"APTOS": "APTOS_processed"}
+    else:
+        RAW_BASE       = "/content/drive/MyDrive/DF_Datasets"
+        PROCESSED_BASE = "/content/drive/MyDrive/DF_Datasets/processed"
+        folder_map     = {
+            "FFPP":    "FFPP_raw",
+            "CelebDF": "CelebDF_raw",
+            "DFD":     "DFD_raw",
+        }
 
     raw_path = os.path.join(RAW_BASE, folder_map[args.dataset])
     os.makedirs(PROCESSED_BASE, exist_ok=True)

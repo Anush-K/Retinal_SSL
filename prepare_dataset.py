@@ -16,8 +16,8 @@ random.seed(42)
 
 # ── Paths ─────────────────────────────────────────────────────
 RAW_BASE       = "/content/drive/MyDrive/APTOS"
-PROCESSED_BASE = "/content/drive/MyDrive/APTOS_processed"
-CSV_SAVE_PATH  = "/content/drive/MyDrive/APTOS_metadata.csv"
+PROCESSED_BASE = "/content/drive/MyDrive/Retinal_SSL/APTOS_processed"
+CSV_SAVE_PATH  = "/content/drive/MyDrive/Retinal_SSL/APTOS_metadata.csv"
 
 # ── Collect all images from raw folder ────────────────────────
 def collect_images(raw_base):

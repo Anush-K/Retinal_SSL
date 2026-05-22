@@ -46,7 +46,7 @@ class SSLDataset(Dataset):
         ].reset_index(drop=True)
 
         self.p_freq = p_freq
-        self.base_aug, self.base_aug2, self.highpass_aug = get_ssl_transforms(image_size)
+        self.base_aug, self.hard_aug, self.highpass_aug = get_ssl_transforms(image_size)
 
         print(f"[SSLDataset] Loaded {len(self.df)} samples "
               f"from {len(csv_files)} CSV(s). Test splits excluded.")
@@ -66,7 +66,7 @@ class SSLDataset(Dataset):
             img = Image.open(self.df.iloc[alt_idx]["image_path"]).convert("RGB")
 
         view_s1 = self.base_aug(img)   # spatial view 1
-        view_s2 = self.base_aug2(img)  # spatial view 2 (independent random state)
+        view_s2 = self.hard_aug(img)  # spatial view 2 (independent random state)
 
         # Frequency view — always generated (influence controlled by λ in loss)
         view_f = self.highpass_aug(img)
