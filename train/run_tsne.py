@@ -20,7 +20,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 # ── Load SSL model ─────────────────────────────────────────────
 model = SSLModel().to(device)
 model.load_state_dict(
-    torch.load("/content/drive/MyDrive/Retinal_SSL/ssl_final.pth", map_location=device), strict=False
+    torch.load("/content/drive/MyDrive/Retinal_SSL/checkpoints/ssl_final.pth", map_location=device), strict=False
 )
 model.eval()
 
