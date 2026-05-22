@@ -11,6 +11,7 @@ import os
 import random
 import shutil
 import pandas as pd
+from tqdm import tqdm
 
 random.seed(42)
 
@@ -28,7 +29,7 @@ def collect_images(raw_base):
     class_map = {"NORMAL": 0, "ABNORMAL": 1}
     all_images = {"NORMAL": [], "ABNORMAL": []}
 
-    for split_folder in ["train", "test"]:
+    for split_folder in tqdm(["train", "test"], desc="Scanning splits"):
         for class_name in ["NORMAL", "ABNORMAL"]:
             folder = os.path.join(raw_base, split_folder, class_name)
             if not os.path.exists(folder):
@@ -72,7 +73,7 @@ def create_split(all_images, processed_base):
             dest_dir = os.path.join(processed_base, split_name, class_name)
             os.makedirs(dest_dir, exist_ok=True)
 
-            for src in split_paths:
+            for src in tqdm(split_paths, desc=f"{split_name}/{class_name}"):
                 fname = os.path.basename(src)
                 dest  = os.path.join(dest_dir, fname)
                 shutil.copy2(src, dest)
