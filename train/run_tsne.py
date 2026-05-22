@@ -20,8 +20,7 @@ model.eval()
 
 # -------- Load Metadata --------
 df = pd.concat([
-    pd.read_csv("FFPP_metadata.csv"),
-    pd.read_csv("CelebDF_metadata.csv")
+    pd.read_csv("/content/drive/MyDrive/APTOS_metadata.csv")
 ])
 
 # Remove test split
