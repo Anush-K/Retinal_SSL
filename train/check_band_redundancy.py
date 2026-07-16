@@ -28,9 +28,9 @@ from ssl_simclr.ssl_model import SSLModel
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-model = SSLModel(mode="multi_band").to(device)
+model = SSLModel(mode="multi_band_sp").to(device)
 model.load_state_dict(torch.load(
-    "/content/drive/MyDrive/Retinal_SSL/checkpoints_multi_band/ssl_final.pth",
+    "/content/drive/MyDrive/Retinal_SSL/checkpoints_multi_band_sp/ssl_final.pth",
     map_location=device
 ))
 model.eval()

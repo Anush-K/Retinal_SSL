@@ -1,8 +1,6 @@
 """
 print_ablation.py
-Loads all saved result CSVs and prints the LSFC ablation table:
-No-SSL baseline vs. spatial-only SSL vs. single-band (DBFC replica)
-vs. multi-band (proposed LSFC).
+Loads all saved result CSVs and prints the LSFC ablation table.
 """
 
 import pandas as pd
@@ -11,10 +9,11 @@ import os
 RESULTS_BASE = "/content/drive/MyDrive/Retinal_SSL"
 
 runs = [
-    ("No SSL (ImageNet baseline)",              "results_nossl"),
-    ("SSL Spatial-Only (plain SimCLR)",          "results_spatial_only"),
-    ("SSL Single-Band (DBFC replica)",           "results_single_band"),
-    ("SSL Multi-Band (LSFC — Ours)",             "results_multi_band"),
+    ("No SSL (ImageNet baseline)",                  "results_nossl"),
+    ("SSL Spatial-Only (plain SimCLR)",              "results_spatial_only"),
+    ("SSL Single-Band (DBFC replica)",               "results_single_band"),
+    ("SSL Multi-Band, naive (shared global pool)",   "results_multi_band"),
+    ("SSL Multi-Band, scale-preserving (LSFC — Ours)", "results_multi_band_sp"),
 ]
 
 rows = []
@@ -33,11 +32,11 @@ if rows:
     cols = ["Run", "AUC", "Accuracy", "Precision", "Recall", "Specificity", "F1"]
     ablation_df = ablation_df[cols]
 
-    print("\n" + "="*90)
+    print("\n" + "="*100)
     print("ABLATION TABLE — APTOS Retinal Image Classification (LSFC)")
-    print("="*90)
+    print("="*100)
     print(ablation_df.to_string(index=False))
-    print("="*90)
+    print("="*100)
 
     ablation_df.to_csv(os.path.join(RESULTS_BASE, "ablation_table.csv"), index=False)
     print("\nSaved: ablation_table.csv")

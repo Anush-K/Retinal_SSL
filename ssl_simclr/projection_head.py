@@ -1,10 +1,6 @@
 """
-projection_head.py — Projection heads for LSFC pretraining
-
-Adds TripleBranchProjectionHead (spatial + freq_fine + freq_coarse) for the
-multi-band ablation, alongside the original single-head ProjectionHead
-(spatial-only ablation) and DualBranchProjectionHead (single-band ablation,
-kept unchanged for a faithful DBFC replication baseline).
+projection_head.py — LSFC projection heads, now including the
+scale-preserving variant (multi_band_sp).
 """
 
 import torch.nn as nn
@@ -28,10 +24,7 @@ class ProjectionHead(nn.Module):
 
 
 class DualBranchProjectionHead(nn.Module):
-    """
-    proj_spatial + proj_freq — kept unchanged from DBFC for the single-band
-    ablation baseline (faithful replication of the deepfake design).
-    """
+    """proj_spatial + proj_freq — single_band ablation (DBFC replica)."""
 
     def __init__(self, in_dim: int = 1792, hidden_dim: int = 512, out_dim: int = 128):
         super().__init__()
@@ -47,20 +40,42 @@ class DualBranchProjectionHead(nn.Module):
 
 class TripleBranchProjectionHead(nn.Module):
     """
-    proj_spatial + proj_freq_fine + proj_freq_coarse — the proposed LSFC head.
-
-    proj_freq_fine   : aligned with microaneurysm-scale frequency view
-    proj_freq_coarse : aligned with hemorrhage/exudate-scale frequency view
-
-    Independent heads let each frequency scale specialize, rather than
-    forcing both lesion scales into a single shared subspace.
+    proj_spatial + proj_freq_fine + proj_freq_coarse — original multi_band.
+    All three take the SAME 1792-d globally-pooled input (this is the
+    architecture that produced the redundant fine/coarse embeddings).
     """
 
     def __init__(self, in_dim: int = 1792, hidden_dim: int = 512, out_dim: int = 128):
         super().__init__()
-        self.proj_spatial    = ProjectionHead(in_dim, hidden_dim, out_dim)
-        self.proj_freq_fine  = ProjectionHead(in_dim, hidden_dim, out_dim)
+        self.proj_spatial     = ProjectionHead(in_dim, hidden_dim, out_dim)
+        self.proj_freq_fine   = ProjectionHead(in_dim, hidden_dim, out_dim)
         self.proj_freq_coarse = ProjectionHead(in_dim, hidden_dim, out_dim)
+
+    def forward_spatial(self, pooled_features):
+        return self.proj_spatial(pooled_features)
+
+    def forward_freq_fine(self, pooled_features):
+        return self.proj_freq_fine(pooled_features)
+
+    def forward_freq_coarse(self, pooled_features):
+        return self.proj_freq_coarse(pooled_features)
+
+
+class ScaleAwareTripleBranchProjectionHead(nn.Module):
+    """
+    multi_band_sp (scale-preserving) — proj_spatial takes the global 1792-d
+    vector as before, but proj_freq_fine and proj_freq_coarse take HIGHER-
+    DIMENSIONAL, spatially-structured inputs (flattened multi-region GeM
+    grids), so scale/layout information is available for them to
+    differentiate on, unlike the original TripleBranchProjectionHead.
+    """
+
+    def __init__(self, spatial_in_dim: int, fine_in_dim: int, coarse_in_dim: int,
+                 hidden_dim: int = 512, out_dim: int = 128):
+        super().__init__()
+        self.proj_spatial     = ProjectionHead(spatial_in_dim, hidden_dim, out_dim)
+        self.proj_freq_fine   = ProjectionHead(fine_in_dim,   hidden_dim, out_dim)
+        self.proj_freq_coarse = ProjectionHead(coarse_in_dim, hidden_dim, out_dim)
 
     def forward_spatial(self, pooled_features):
         return self.proj_spatial(pooled_features)

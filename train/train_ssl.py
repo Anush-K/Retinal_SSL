@@ -1,18 +1,16 @@
 """
-train_ssl.py — LSFC SSL pretraining, 3-way ablation via --mode
+train_ssl.py — LSFC SSL pretraining, 4-way mode support.
 
-  --mode spatial_only : plain SimCLR (no frequency branch at all)
-  --mode single_band   : DBFC replica (single kernel=5 high-pass, faithful
-                          port of the deepfake design onto retinal data)
-  --mode multi_band     : LSFC (proposed) — fine + coarse frequency bands
-
-Each mode saves to its own checkpoint directory so all three can be run
-back-to-back without overwriting each other.
+  --mode spatial_only  : plain SimCLR (no frequency branch)
+  --mode single_band    : DBFC replica (single kernel=5 high-pass)
+  --mode multi_band     : naive multi-band (fine+coarse share global pool —
+                           produced redundant fine/coarse embeddings,
+                           cosine sim ~0.96, in the original experiment)
+  --mode multi_band_sp  : FIX — fine/coarse pooled at higher spatial
+                           resolution before flattening (scale-preserving)
 
 Usage (from Colab):
-    !PYTHONPATH=/content/Retinal_SSL python train/train_ssl.py --mode spatial_only
-    !PYTHONPATH=/content/Retinal_SSL python train/train_ssl.py --mode single_band
-    !PYTHONPATH=/content/Retinal_SSL python train/train_ssl.py --mode multi_band
+    !PYTHONPATH=/content/Retinal_SSL python train/train_ssl.py --mode multi_band_sp
 """
 
 import os
@@ -36,7 +34,7 @@ torch.cuda.manual_seed_all(42)
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--mode", type=str, required=True,
-                    choices=["spatial_only", "single_band", "multi_band"])
+                    choices=["spatial_only", "single_band", "multi_band", "multi_band_sp"])
     p.add_argument("--epochs", type=int, default=50)
     p.add_argument("--batch_size", type=int, default=64)
     p.add_argument("--lr", type=float, default=3e-4)
@@ -77,6 +75,8 @@ def train_ssl(mode, csv_files, device="cuda", epochs=50, batch_size=64, lr=3e-4)
             scheduler.step()
         print(f"Resumed from epoch {start_epoch}")
 
+    USES_FREQ_FINE_COARSE = mode in ("multi_band", "multi_band_sp")
+
     for epoch in range(start_epoch, epochs):
         model.train()
         totals = {"loss": 0.0, "within": 0.0, "fine": 0.0, "coarse": 0.0}
@@ -103,7 +103,8 @@ def train_ssl(mode, csv_files, device="cuda", epochs=50, batch_size=64, lr=3e-4)
                         l_w = nt_xent_loss(z_s1, z_s2, temperature=0.1).item()
                     l_fine, l_coarse = 0.0, 0.0
 
-                else:  # multi_band
+                else:  # multi_band or multi_band_sp — identical training loop,
+                       # only the model's internal pooling differs
                     view_fine   = view_fine.to(device, non_blocking=True)
                     view_coarse = view_coarse.to(device, non_blocking=True)
                     z_fine   = model(view_fine,   domain="freq_fine")
